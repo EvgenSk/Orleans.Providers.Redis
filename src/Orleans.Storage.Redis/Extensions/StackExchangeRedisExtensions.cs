@@ -53,6 +53,28 @@ namespace Orleans.Persistence.Redis.Extensions
             }
         }
 
+        public static void StoreObject<T>(this IDatabase redisClient, ISerializationManager serializationManager, T value, string objectId, TimeSpan? expireTime = null)
+        {
+            string key = CreateUrn<T>(objectId);
+            var data = serializationManager.SerializeToByteArray(value);
+            redisClient.StringSet(key, data);
+            if (expireTime.HasValue)
+            {
+                redisClient.KeyExpire(key, expireTime);
+            }
+        }
+
+        public static void StoreObject(this IDatabase redisClient, ISerializationManager serializationManager, object value, Type type, string objectId, TimeSpan? expireTime = null)
+        {
+            string key = CreateUrn(objectId, type);
+            var data = serializationManager.SerializeToByteArray(value);
+            redisClient.StringSet(key, data);
+            if (expireTime.HasValue)
+            {
+                redisClient.KeyExpire(key, expireTime);
+            }
+        }
+
         public static void DeleteObject<T>(this IDatabase redisClient, string objectId)
         {
             redisClient.KeyDelete(CreateUrn<T>(objectId));

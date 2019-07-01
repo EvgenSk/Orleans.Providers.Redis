@@ -22,6 +22,9 @@ namespace Orleans.Configuration
         public const PersistenceLifetime DEFAULT_PERSISTENCE_LIFETIME = PersistenceLifetime.ServiceLifetime;
 
         public bool ThrowExceptionOnInconsistentETag { get; set; } = true;
+
+        public DateTime? ExpirationDate { get; set; }
+        public TimeSpan? ExpiresAfter { get; set; }
     }
 
     public class RedisGrainStorageOptionsValidator : IConfigurationValidator

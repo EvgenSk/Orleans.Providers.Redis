@@ -98,7 +98,20 @@ namespace Orleans.Storage
                     await ValidateETag(grainState.ETag, storedState, stateType);
                 }
 
-                await Task.Run(() => _redisClient.StoreObject(_serializationManager, grainState.State, stateType, key));
+                await Task.Run(() => {
+                    if(_options.ExpirationDate.HasValue && _options.ExpiresAfter.HasValue)
+                    {
+                        if(DateTime.Now + _options.ExpiresAfter.Value < _options.ExpirationDate.Value)
+                            _redisClient.StoreObject(_serializationManager, grainState.State, stateType, key, _options.ExpiresAfter);
+                        else
+                            _redisClient.StoreObject(_serializationManager, grainState.State, stateType, key, _options.ExpirationDate);
+                    }
+                    else if(_options.ExpirationDate.HasValue)
+                        _redisClient.StoreObject(_serializationManager, grainState.State, stateType, key, _options.ExpirationDate);
+                    else
+                        _redisClient.StoreObject(_serializationManager, grainState.State, stateType, key, _options.ExpiresAfter);
+                });
+                
                 grainState.ETag = GenerateETag(grainState.State, stateType);
             }
             catch (Exception e)
