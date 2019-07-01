@@ -11,10 +11,28 @@ namespace Orleans.Streaming
 {
     public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
     {
-        public SiloRedisStreamConfigurator(string name, ISiloHostBuilder builder)
-            : base(name, builder, RedisQueueAdapterFactory.Create)
+        // TODO: Fix it. It's a quick fix for build errors, not sure it's a good solution though
+        public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate = null)
+            : base(name, configureDelegate, RedisQueueAdapterFactory.Create)
         {
-            this.siloBuilder
+            this.configureDelegate?.Invoke(services => {
+                    services.TryAddSingleton(SilentLogger.Logger);
+                    services.ConfigureNamedOptionForLogging<RedisStreamOptions>(name);
+                    services.TryAddSingleton(CachedConnectionMultiplexerFactory.Default);
+                    services.TryAddSingleton<ISerializationManager, OrleansSerializationManager>();
+                    services.AddSingleton<IRedisDataAdapter, RedisDataAdapter>();
+                    services.AddTransient<IConfigurationValidator>(sp => new RedisStreamOptionsValidator(sp.GetOptionsByName<RedisStreamOptions>(name), name));
+                    services.ConfigureNamedOptionForLogging<SimpleQueueCacheOptions>(name);
+                    services.AddTransient<IConfigurationValidator>(sp => new SimpleQueueCacheOptionsValidator(sp.GetOptionsByName<SimpleQueueCacheOptions>(name), name));
+                    services.ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
+                    });
+        }
+
+        // TODO: Fix it. It's a quick fix for build errors, not sure it's a good solution though
+        public SiloRedisStreamConfigurator(string name, ISiloHostBuilder builder)
+            : base(name, null, RedisQueueAdapterFactory.Create)
+        {
+            builder
                 .ConfigureApplicationParts(parts => parts.AddFrameworkPart(typeof(RedisQueueAdapterFactory).Assembly))
                 .ConfigureServices(services =>
                 {
