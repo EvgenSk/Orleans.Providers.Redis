@@ -6,15 +6,17 @@ using Orleans.Hosting;
 using Orleans.Streams;
 using System;
 using Orleans.Providers.Streams.Redis;
+using Orleans.ApplicationParts;
 
 namespace Orleans.Streaming
 {
     public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
     {
         // TODO: Fix it. It's a quick fix for build errors, not sure it's a good solution though
-        public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate = null)
+        public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate, Action<Action<IApplicationPartManager>> configureAppPartsDelegate)
             : base(name, configureDelegate, RedisQueueAdapterFactory.Create)
         {
+            configureAppPartsDelegate(parts => parts.AddFrameworkPart(typeof(RedisQueueAdapterFactory).Assembly));
             this.configureDelegate?.Invoke(services => {
                     services.TryAddSingleton(SilentLogger.Logger);
                     services.ConfigureNamedOptionForLogging<RedisStreamOptions>(name);
