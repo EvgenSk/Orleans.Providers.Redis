@@ -1,4 +1,5 @@
-﻿using Orleans.Redis.Common;
+﻿using Microsoft.Extensions.Options;
+using Orleans.Redis.Common;
 using Orleans.Runtime;
 using System;
 
@@ -10,7 +11,7 @@ namespace Orleans.Configuration
         ClusterLifetime = 1
     }
 
-    public class RedisGrainStorageOptions : RedisOptions
+    public class RedisGrainStorageOptions : RedisOptions, IOptions<RedisGrainStorageOptions>
     {
         /// <summary>
         /// Stage of silo lifecycle where storage should be initialized.  Storage must be initialized prior to use.
@@ -25,16 +26,18 @@ namespace Orleans.Configuration
 
         public DateTime? ExpirationDate { get; set; }
         public TimeSpan? ExpiresAfter { get; set; }
-    }
+
+		RedisGrainStorageOptions IOptions<RedisGrainStorageOptions>.Value => this;
+	}
 
     public class RedisGrainStorageOptionsValidator : IConfigurationValidator
     {
         private readonly RedisGrainStorageOptions options;
         private readonly string name;
 
-        public RedisGrainStorageOptionsValidator(RedisGrainStorageOptions options, string name)
+        public RedisGrainStorageOptionsValidator(IOptions<RedisGrainStorageOptions> options, string name)
         {
-            this.options = options;
+            this.options = options.Value;
             this.name = name;
         }
 

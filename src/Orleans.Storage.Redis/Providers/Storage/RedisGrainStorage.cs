@@ -39,10 +39,10 @@ namespace Orleans.Storage
         private IConnectionMultiplexer _connectionMultiplexer;
         private IDatabase _redisClient => _connectionMultiplexer.GetDatabase();
 
-        public RedisGrainStorage(string name, RedisGrainStorageOptions options, ILogger logger, IOptions<ClusterOptions> clusterOptions, ISerializationManager serializationManager, IConnectionMultiplexerFactory connectionMultiplexerFactory)
+        public RedisGrainStorage(string name, IOptions<RedisGrainStorageOptions> options, ILogger logger, IOptions<ClusterOptions> clusterOptions, ISerializationManager serializationManager, IConnectionMultiplexerFactory connectionMultiplexerFactory)
         {
             _name = name;
-            _options = options;
+            _options = options.Value;
             _logger = logger;
             _serializationManager = serializationManager;
             _clusterOptions = clusterOptions.Value;
