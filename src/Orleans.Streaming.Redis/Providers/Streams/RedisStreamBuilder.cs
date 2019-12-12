@@ -12,9 +12,9 @@ namespace Orleans.Streaming
     public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
     {
         public SiloRedisStreamConfigurator(string name, ISiloHostBuilder builder)
-            : base(name, builder, RedisQueueAdapterFactory.Create)
+            : base(name, cd => builder.ConfigureServices(s => cd.Invoke(s)), RedisQueueAdapterFactory.Create)
         {
-            this.siloBuilder
+            builder
                 .ConfigureApplicationParts(parts => parts.AddFrameworkPart(typeof(RedisQueueAdapterFactory).Assembly))
                 .ConfigureServices(services =>
                 {
@@ -25,7 +25,7 @@ namespace Orleans.Streaming
                     services.AddSingleton<IRedisDataAdapter, RedisDataAdapter>();
                     services.AddTransient<IConfigurationValidator>(sp => new RedisStreamOptionsValidator(sp.GetOptionsByName<RedisStreamOptions>(name), name));
                     services.ConfigureNamedOptionForLogging<SimpleQueueCacheOptions>(name);
-                    services.AddTransient<IConfigurationValidator>(sp => new SimpleQueueCacheOptionsValidator(sp.GetOptionsByName<SimpleQueueCacheOptions>(name), name));
+                    services.AddTransient<IConfigurationValidator>(sp => SimpleQueueCacheOptionsValidator.Create(sp, name));
                     services.ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
                 });
 
@@ -56,7 +56,7 @@ namespace Orleans.Streaming
         public ClusterClientRedisStreamConfigurator(string name, IClientBuilder builder)
             : base(name, builder, RedisQueueAdapterFactory.Create)
         {
-            this.clientBuilder.ConfigureApplicationParts(parts => parts.AddFrameworkPart(typeof(RedisQueueAdapterFactory).Assembly))
+            builder.ConfigureApplicationParts(parts => parts.AddFrameworkPart(typeof(RedisQueueAdapterFactory).Assembly))
                  .ConfigureServices(services =>
                  {
                      services.TryAddSingleton(SilentLogger.Logger);
