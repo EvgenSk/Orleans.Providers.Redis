@@ -1,118 +1,50 @@
-jobs:
-- job: Linux
-  pool:
-    vmImage: 'Ubuntu 16.04'
+pool:
+  vmImage: 'ubuntu-16.04'
 
-  steps:
-  - script: dotnet restore
-    displayName: 'Restore dependencies'
+variables:
+  buildConfiguration: 'Release'
+  dotnetSdkVersion: '3.x'
+  major: '0'
+  minor: '1'
+  patch: '0'  
 
-  - script: dotnet build
-    displayName: 'Build'
+steps:
+- task: UseDotNet@2
+  displayName: 'Use .NET Core SDK $(dotnetSdkVersion)'
+  inputs:
+    packageType: sdk
+    version: '$(dotnetSdkVersion)'
+    installationPath: $(Agent.ToolsDirectory)/dotnet
 
-  - script: docker run -d --name test-redis --rm -p 6379:6379 redis
-    displayName: 'Start Redis docker container for tests'
+- task: DotNetCoreCLI@2
+  displayName: 'Restore project dependencies'
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
 
-  - script: dotnet test --logger trx
-    displayName: 'Run automated tests'
-    continueOnError: true
+- task: DotNetCoreCLI@2
+  displayName: 'Build the project - $(buildConfiguration)'
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--no-restore --configuration $(buildConfiguration)'
 
-  - task: PublishTestResults@2
-    inputs:
-      testRunner: VSTest
-      testResultsFiles: '**/*.trx'
-      failOnStandardError: 'true'
+- task: DotNetCoreCLI@2
+  displayName: 'Pack the project - $(buildConfiguration)'
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/*.csproj'
+    nobuild: true
+    arguments: '--configuration $(buildConfiguration)'
+    versioningScheme: byPrereleaseNumber
+    majorVersion: '$(major)'
+    minorVersion: '$(minor)'
+    patchVersion: '$(patch)'
 
-  - script: docker container kill test-redis
-    displayName: 'Cleanup Redis docker container'
-
-- job: Windows
-  pool:
-    vmImage: 'vs2017-win2016'
-
-  steps:
-  - script: dotnet restore
-    displayName: 'Restore dependencies'
-
-  - script: dotnet build
-    displayName: 'Build'
-
-  - script: |
-      choco install -y redis-64
-      start "redis" redis-server
-    displayName: 'Install and run Redis for tests'
-
-  - script: dotnet test --logger trx
-    displayName: 'Run automated tests'
-    continueOnError: true
-
-  - task: PublishTestResults@2
-    inputs:
-      testRunner: VSTest
-      testResultsFiles: '**/*.trx'
-      failOnStandardError: 'true'
-
-  - script: |
-      taskkill /IM redis-server.exe
-      choco uninstall redis-64
-    displayName: 'Cleanup Redis'
-- job: macOS
-  pool:
-    vmImage: 'macOS-10.13'
-
-  steps:
-  - script: dotnet restore
-    displayName: 'Restore dependencies'
-
-  - script: dotnet build
-    displayName: 'Build'
-
-  - script: |
-      brew install redis
-      brew services start redis
-    displayName: 'Install and run Redis for tests'
-
-  - script: dotnet test --logger trx
-    displayName: 'Run automated tests'
-    continueOnError: true
-
-  - task: PublishTestResults@2
-    inputs:
-      testRunner: VSTest
-      testResultsFiles: '**/*.trx'
-      failOnStandardError: 'true'
-
-  - script: |
-      brew services stop redis
-      brew uninstall redis
-    displayName: 'Cleanup Redis'
-
-- job: Publish
-  dependsOn:
-  - Linux
-  - Windows
-  - macOS
-
-  pool:
-    vmImage: 'Ubuntu 16.04'
-
-  steps:
-  - script: dotnet restore
-    displayName: 'Restoring Packages'
-
-  - script: dotnet build --configuration Debug --version-suffix $(Build.BuildNumber)
-    condition: ne(variables['Build.SourceBranch'], 'refs/heads/release')
-    displayName: 'Building'
-
-  - script: dotnet build --configuration Release
-    condition: eq(variables['Build.SourceBranch'], 'refs/heads/release')
-    displayName: 'Building (Release)'
-
-  - task: NuGetCommand@2
-    displayName: 'Publishing Build'
-    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/release')))
-    inputs:
-      command: push
-      nuGetFeedType: external
-      publishFeedCredentials: 'Zuercher.NuGet'
-      packagesToPush: './Artifacts/**/*.nupkg'
+- task: NuGetCommand@2
+  displayName: 'Publish NuGet package'
+  inputs:
+    command: 'push'
+    publishVstsFeed: 'Misc'
+    allowPackageConflicts: true
+  condition: succeeded()
