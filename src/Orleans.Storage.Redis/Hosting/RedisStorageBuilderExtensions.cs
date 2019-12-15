@@ -32,6 +32,14 @@ namespace Orleans.Hosting
             return builder.ConfigureServices(services => services.AddRedisGrainStorage(name, ob => ob.Configure(configureOptions)));
         }
 
+        /// <summary>
+        /// Configure silo to use redis table storage for grain storage.
+        /// </summary>
+        public static ISiloBuilder AddRedisGrainStorage(this ISiloBuilder builder, string name, Action<RedisGrainStorageOptions> configureOptions)
+        {
+            return builder.ConfigureServices(services => services.AddRedisGrainStorage(name, ob => ob.Configure(configureOptions)));
+        }
+
         internal static IServiceCollection AddRedisGrainStorage(this IServiceCollection services, string name, Action<OptionsBuilder<RedisGrainStorageOptions>> configureOptions = null)
         {
             configureOptions?.Invoke(services.AddOptions<RedisGrainStorageOptions>(name));
